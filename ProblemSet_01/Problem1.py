@@ -44,7 +44,7 @@ def combineDerivative(f, x, delta):
     accurate_derivative = (4*f1 - f2)/(3)
     return accurate_derivative
 
-
+ 
 ############ Sample functions definitions ############
 
 def f_exp1(x):
@@ -53,18 +53,29 @@ def f_exp1(x):
 def f_exp2(x):
     return np.exp(0.01*x)
 
-
-############ Putting it all together ############
-
-# I define by default the smallest fractional difference for a 64/32 bit system
-if is64bit:
-    eps = 1/np.power(2, 53)
-if not is64bit:
-    eps = 1/np.power(2, 24)
+############ Fractional error function definition ############
 
 def getDerivativeFracErr(f, a, x, eps, verbose, delta_custom=None):
+    """ 
+    Calculates the derivative and obtains the std from the 'fractional err'
+    as we expect the error to scale with f(x) in this case.
+    
+    :param f: the function to calculate the derivative of
+    :param a: the exponential parameter of f
+    :param x: the x value at which the derivative must be 
+              calculated.
+    :param verbise: verbose level == 2 - Plot the derivative approximation
+                            level >= 1 - Plot the error in the derivative
+                            level == 0 - Plot nothing
+                            
+    :param delta: the delta of the approximation, if None uses 
+                  the calculated formula
+
+    :return: The delta used (if verbose >= 1) 
+             and the std error (for verbose > 0)
+    """ 
     if delta_custom is None: 
-        delta = np.power(eps*eps*1.0/np.power(a, 10), 1.0/12.0)
+        delta = np.power(eps*eps*180.0/np.power(a, 10), 1.0/12.0)
     else:
         delta = delta_custom
         
@@ -82,59 +93,57 @@ def getDerivativeFracErr(f, a, x, eps, verbose, delta_custom=None):
     
     return np.std(err)
 
-x1 = np.linspace(-1, 1, 1000)
-chosen_delta1, std_err1 = getDerivativeFracErr(f_exp1, 1, x1, eps, 2)
-print(std_err1)
 
-x2 = np.linspace(-100, 100, 1000)
-chosen_delta2, std_err2 = getDerivativeFracErr(f_exp2, 0.01, x2, eps, 2)
-print(std_err2)
+############ Putting it all together ############
 
+# I define by default the smallest fractional difference for a 64/32 bit system
+if is64bit:
+    eps = 1/np.power(2, 53)
+if not is64bit:
+    eps = 1/np.power(2, 24)
 
-all_delta = np.linspace(chosen_delta1*0.001, chosen_delta1*4, 100)
+  
+# Calculates derivative for f(x), shows the error over the x range
+# and shows that the delta used approximately minimizes the error
+# this is shown by plotting the std_err over a range of possible delta.
+
+#Here f(x) = exp(x)
+x1 = np.linspace(-1, 1, 1000) # The x values for which df/dx is approximated
+
+#Verbose calculation of the derivative, err, and std_err.
+# (also returns the dela used)
+chosen_delta1, std_err1 = getDerivativeFracErr(f_exp1, 1, x1, eps, 2) 
+
+# Delta values for which we calculate std_err, and show our
+# chosen_delta is close to the minima.
+all_delta = np.linspace(0.0002, 5, 100)
 all_err = np.zeros(100)
 for i in range(0, len(all_delta)):
     all_err[i] = getDerivativeFracErr(f_exp1, 1, x1, eps, 0, all_delta[i])
 plt.plot(all_delta, all_err)
-plt.scatter(chosen_delta1, std_err1, color="red")
+plt.scatter(chosen_delta1, std_err1, color="red", s=8,
+            label="The calculated delta")
+plt.legend()
+plt.ylabel("The std_err of the derivative")
+plt.xlabel("Delta")
 plt.show()
 
 
-all_delta = np.linspace(chosen_delta2*0.01, chosen_delta2*4, 100)
+# Same as the above, but done for f(x) = exp(0.01*x)
+x2 = np.linspace(-100, 100, 1000)
+chosen_delta2, std_err2 = getDerivativeFracErr(f_exp2, 0.01, x2, eps, 2)
+print(std_err2)
+
+all_delta = np.linspace(0.02,500, 100)
 all_err = np.zeros(100)
 for i in range(0, len(all_delta)):
     all_err[i] = getDerivativeFracErr(f_exp2, 0.01, x2, eps, 0, all_delta[i])
 plt.plot(all_delta, all_err)
-plt.scatter(chosen_delta2, std_err2, color="red")
+plt.scatter(chosen_delta2, std_err2, color="red", s=8,
+            label="The calculated delta")
+plt.legend()
+plt.ylabel("The std_err of the derivative")
+plt.xlabel("Delta")
 plt.show()
 
-"""
-x1 = np.linspace(-1, 1, 1000)
-
-accurate_deriv_1 = combineDerivative(f_exp1, x1, delta1)
-
-plt.plot(x1, accurate_deriv_1, color="orange")
-plt.plot(x1, f_exp1(x1), color="blue")
-plt.show()
-
-plt.plot(x1,accurate_deriv_1 - f_exp1(x1), color="blue")
-plt.show()
-
-##
-
-a2 = 0.01  # The parameter of exp(ax)
-delta2 = np.power(180*eps*eps*1.0/np.power(a2, 10), 1.0/12.0)
-print(delta2)
-x2 = np.linspace(-100, 100, 1000)
-
-accurate_deriv_2 = combineDerivative(f_exp2, x2, delta2)
-
-plt.scatter(x2, accurate_deriv_2, color="orange")
-plt.scatter(x2, a2*f_exp2(x2), color="blue")
-plt.show()
-
-plt.scatter(x2,(accurate_deriv_2 - a2*f_exp2(x2))/(a2*f_exp2(x2)), color="blue")
-plt.show()
-
-"""
 
