@@ -75,18 +75,18 @@ def getDerivativeFracErr(f, a, x, eps, verbose, delta_custom=None):
              and the std error (for verbose > 0)
     """ 
     if delta_custom is None: 
-        delta = np.power(eps*eps*180.0/np.power(a, 10), 1.0/12.0)
+        delta = np.power(eps*eps*225.0/np.power(a, 10), 1.0/10.0)
     else:
         delta = delta_custom
         
     deriv = combineDerivative(f, x, delta)
-    err = np.divide(deriv - a*f(x), a*f(x))
+    err = np.divide(deriv - a*f(x),  a*f(x))
     if verbose == 2:
         plt.plot(x, deriv)
         plt.title("The derivative")
         plt.show()
     if verbose >= 1:
-        plt.plot(x, err)
+        plt.scatter(x, np.abs(err), s=1)
         plt.title("The fractional error in the derivative")
         plt.show()
         return delta, np.std(err)
@@ -132,7 +132,6 @@ plt.show()
 # Same as the above, but done for f(x) = exp(0.01*x)
 x2 = np.linspace(-100, 100, 1000)
 chosen_delta2, std_err2 = getDerivativeFracErr(f_exp2, 0.01, x2, eps, 2)
-print(std_err2)
 
 all_delta = np.linspace(0.02,500, 100)
 all_err = np.zeros(100)
