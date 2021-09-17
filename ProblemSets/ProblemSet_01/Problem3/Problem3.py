@@ -1,23 +1,30 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Obtaining the data
 data = np.loadtxt("lakeshore.txt", skiprows=3).T
 
-data_even = data.T[0::2].T
-data_odd = data.T[1::2].T
-
 # The concatenation is added to define a value (of zero) for dT/dV at the last point
-# which then will include it in the interpolation
+# which then will include the last point in the interpolation
 dT = data[0][0:]-np.concatenate((data[0][1:], [data[0][-1]]))
 dV = data[1][0:]-np.concatenate((data[1][1:], [0]))
 
 def getClosestIndex(v_in, v_data):
+    """
+    Obtains the closest index; supports array input
+    
+    :param v_in: Input data (scalar or array) of which we want the closest value 
+                 (or index) in v_data
+    :param v_data: The general data
+
+    :return: Closest value of v_in in v_data returned in index
+    """
     # Changes a constant with an array with size 1, and does nothing to arrays
     v_arr = np.atleast_1d(np.multiply(v_in, 1.0))
 
     # Make sure you are within range (Note the voltage is decreasing)
-    assert (v_arr >= v_data[-1]).all()
-    assert (v_arr <= v_data[0]).all()
+    assert (v_arr >= np.min(v_data)).all()
+    assert (v_arr <= np.max(v_data)).all()
 
     # Look for the closest indices of each v_arr[i]
     closest_indices = np.zeros(len(v_arr), dtype=int)
@@ -28,6 +35,14 @@ def getClosestIndex(v_in, v_data):
 
 
 def lakeshore(V, data):
+    """
+    Interpolates the temperature given the voltage and estimate the error
+    
+    :param V: The voltage whose temperature you want (supports array and scalar)
+    :param data: The known data; data[0] temperature, data[1] voltage
+
+    :return: An approximation of the error and interpolated temperature
+    """
     # For readability purposes
     data_t = data[0]
     data_v = data[1]
@@ -68,12 +83,20 @@ def lakeshore(V, data):
     return err_estimate, interpolated_values
 
 
-v = np.linspace(data[1][0], data[1][-1], 1000)
+##### Testing the above code ######
+
+v = np.linspace(data[1][0], data[1][-1], 10000)
 err, t = lakeshore(v, data)
 
-
 plt.plot(v, t)
+plt.title("Interpolating the temperature over a finer voltage space")
+plt.ylabel("Temperature")
+plt.xlabel("Voltage")
 plt.show()
 
 plt.plot(t, err/t, color="red")
+
+plt.title("Estimate of the fractional error in temperature")
+plt.xlabel("Voltage")
+plt.ylabel("Fractional err in temperature")
 plt.show()

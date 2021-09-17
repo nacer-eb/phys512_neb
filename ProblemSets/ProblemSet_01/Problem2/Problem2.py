@@ -93,8 +93,11 @@ def test_func_actual_derivative(x):
 x = np.linspace(-14, 14, 200)
 deriv, dx, err = ndiff(test_func_sin, x, True)
 
-plt.plot(x, np.abs(deriv-test_func_actual_derivative(x)), color="red")
+plt.plot(x, deriv, color="red", label="Derivative approximation")
+plt.plot(x, test_func_actual_derivative(x), label="Actual derivative")
+plt.legend()
 plt.show()
 
 plt.plot(x, err)
+plt.title("The error of the derivative")
 plt.show()
