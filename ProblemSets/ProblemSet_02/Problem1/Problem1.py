@@ -4,7 +4,7 @@ import scipy
 import scipy.integrate
 
 ##### The custom integration code #####
-#### TAKEN FROM MY PROBLEM 2 #####
+#### TAKEN FROM MY PROBLEM 2 (see Problem2.py) #####
 
 # A global variable which counts recursions
 recursion_count = 0
@@ -101,7 +101,8 @@ def integrate_adaptive(func, a, b, tol, extra=None):
         
         # return the sum of the left and right region integrals
         return recursion_integral_L + recursion_integral_R
-        
+
+    
 ##### End of the custom integration code #####
 
 # Define parameters initial values
@@ -111,8 +112,15 @@ q = 1e-11
 rho = q/(4*np.pi)
 epsilon_0 = 8.85e-12
 
-# A function that calculates the actual spherical electric field at x-away from the center
 def calc_actual_spherical_E(x):
+    """
+    Calculate the electric feld from a spherical shell, 
+    x-away from the center
+
+    :param x: Distance from the center of the sphere
+
+    :return: The Electric field
+    """
     x = np.atleast_1d(x)
     E = [0]*len(x)
     for i in range(len(x)):
@@ -141,7 +149,7 @@ def integrand_func_rectified(theta):
 
 
 # Obtain the z-linspace
-z_linspace = np.linspace(0, 4, 40+1)
+z_linspace = np.linspace(0, 4*R, 40+1)
 
 # Instantiate the electric field arrays
 E_own = [0]*len(z_linspace)

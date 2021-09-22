@@ -23,6 +23,7 @@ def simpson(func, a, b, f_a, f_interm, f_b):
     simpson_integral = ((b-a)/6.0)*(f_a + 4.0*f_interm + f_b)
     return simpson_integral
 
+
 def integrate_adaptive(func, a, b, tol, extra=None):  
     """
     Obtains the three point integral simpson's estimate
@@ -112,6 +113,7 @@ def test_func(x):
 
     # return the function value at x
     return np.exp(x)
+
 
 # Integrate the test function
 integ = integrate_adaptive(test_func, -10, 10, 1.0e-7)
