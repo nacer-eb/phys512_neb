@@ -34,8 +34,8 @@ data_TT_err = 0.5*(data[:, 2] + data[:, 3])
 test_script_TT = get_power_func(test_script_params)[0:len(data_TT)]
 new_TT = get_power_func(new_params)[0:len(data_TT)]
 
-test_script_TT_resid = test_script_TT - data_TT
-new_TT_resid = new_TT - data_TT
+test_script_TT_resid = data_TT - test_script_TT
+new_TT_resid =  data_TT - new_TT
 
 test_script_TT_chi_sqrd = np.sum(np.square(test_script_TT_resid/data_TT_err))
 new_TT_chi_sqrd = np.sum(np.square(new_TT_resid/data_TT_err))
