@@ -1,9 +1,22 @@
 import numpy as np
+import numpy.random as random
 import matplotlib.pyplot as plt
 import camb
 
-def get_power_func(param, lmax=3000):
+# Taken from Problem 1
+def get_power_func(param, lmax=2507):
+    """
+    Calculates the TT power spectra using the given params
+    
+    :param param: Array containing the following  parameters in order: H_0, 
+                  Ombh², Omch², Tau, A_s, n_s.
+
+    :return: The TT power spectra values from l=2 up to lmax+2.
+    """
+    # Transfer params from array to variables
     H0, ombh2, omch2, tau, As, ns = param[0:]
+
+    # Instanciate the camb parameter class
     camb_params = camb.CAMBparams()
 
     # Set camb parameters
@@ -13,129 +26,191 @@ def get_power_func(param, lmax=3000):
     camb_params.InitPower.set_params(As=As, ns=ns, r=0)
     camb_params.set_for_lmax(lmax, lens_potential_accuracy=0)
 
+    # Obtain the parameter results & set units
     camb_results = camb.get_results(camb_params)
-    camb_power_spectras = camb_results.get_cmb_power_spectra(camb_params,
+    camb_power_spectra = camb_results.get_cmb_power_spectra(camb_params,
                                                      CMB_unit='muK')
-    total_power = camb_power_spectras['total']
+
+    # Obtain total power from the power spectra results
+    total_power = camb_power_spectra['total']
     TT = total_power[:, 0]
 
-    return TT[2:]
+    return TT[2:lmax+2]
 
 
-def mcmc_step(f, y_true, N_inv, m, old_chi_sqrd, step_size, curvM):
-    dim_m = len(m)
+#Taken from problem 2
+def calc_chi_sqrd(f, m, y_true, N_inv):
+    """
+    Calculates chi².
     
-    m_step = 0.01*step_size*np.random.multivariate_normal(np.zeros(dim_m),
-                                                     np.linalg.inv(curvM))
+    :param f: The model function
+    :param m: The current model parameters.
+    :param y_true: The true y_data (Power spectra in our case)
+    :param N_inv: The inverse of the error array of true data. (diag(err**-2))
 
-    print(m_step)
-    #np.linalg.inv(curvM)@np.random.randn(dim_m)
-    new_m = m + m_step
-    y = f(new_m)
- 
-    res = y_true - y[0: len(y_true)]
+    :return: f(m), chi²
+    """
+    # Calulate f(m), then the residuals, then chi²
+    y = f(m)
+    res = y_true - y
+    chi_sqrd = res.T@N_inv@res
 
-    new_chi_sqrd = res.T@N_inv@res
-    delta_chi_sqrd = new_chi_sqrd - old_chi_sqrd
+    return y, chi_sqrd
 
+
+def mcmc_step(f, y_true, N_inv, old_m, old_chi_sqrd, step_size, covariance):
+    """
+    Computes a single mcmc step
+    
+    :param f: The model function
+    :param y_true: The actual data (Power spectra in our case)
+    :param N_inv: The inverse of the error array of true data. (diag(err**-2))
+    :param old_m: The previous model parameters.
+    :param old_chi_sqrd: The previous chi² calculated
+    :param step_size: The mcmc step size.
+    :param covariance: The covariance between the parameters,
+                       to estimate a better step size.
+
+    :return: m_new, y_new
+    """
+
+    # Obtain the dimensions of the system
+    dim_m = len(old_m)
+
+    # Take a random step
+    m_step = step_size*random.multivariate_normal(np.zeros(dim_m), covariance)
+
+    # Obtain the new parameter set
+    m = old_m + m_step
+
+    # Calculate chi² and delta chi² 
+    y, chi_sqrd = calc_chi_sqrd(f, m, y_true, N_inv)
+    delta_chi_sqrd = chi_sqrd - old_chi_sqrd
+
+    # If this step is good, try stepping further
     i = 1
     while delta_chi_sqrd < 0:
+        # Stepping progressively further.
         i += 1
-        new_new_m = new_m + m_step*1.2**i
-        new_y = f(new_new_m)
- 
-        new_res = y_true - new_y[0: len(y_true)]
+        new_m = m + m_step*1.2**i
 
-        new_new_chi_sqrd = new_res.T@N_inv@new_res
-        new_delta_chi_sqrd = new_new_chi_sqrd - old_chi_sqrd
+        # Calculate the new_chi_sqrd and it's delta
+        new_y, new_chi_sqrd = calc_chi_sqrd(f, new_m, y_true, N_inv)
+        new_delta_chi_sqrd = new_chi_sqrd - old_chi_sqrd
 
+        # If this is a worse improvement, don't use it
         if new_delta_chi_sqrd > delta_chi_sqrd:
             break
-        new_m = new_new_m
+
+        # Else, if it is better (smaller new chi²) use it.
+        m = new_m
         y = new_y
 
-        new_chi_sqrd = new_new_chi_sqrd
+        # Save your new values and repeat the cycle until it stops improving
+        chi_sqrd = new_chi_sqrd
         delta_chi_sqrd = new_delta_chi_sqrd
-        print(delta_chi_sqrd)
+
+        # Verbosity is forced here - the program lasts a while
+        print("The delta chi²", delta_chi_sqrd)
         
+    # Calculate the probability to switch to the new m-state
     switch_prob = np.exp(-0.5*delta_chi_sqrd)
 
+    # 'Roll the dice'
     rand_value = np.random.rand()
 
-    print("delta", delta_chi_sqrd)
-    print("rand_value", rand_value)
-    print("switch prob", switch_prob)
+    # Verbose info.
+    print("Delta", delta_chi_sqrd, "// RandValue", rand_value, "// SwitchProb", switch_prob)
     
+    # If the switch is made.
     if rand_value <= switch_prob:
-        return new_m, new_chi_sqrd
+        return m, chi_sqrd
 
-    # Else
-    return m, old_chi_sqrd
+    # Else keep the old m-state
+    return old_m, old_chi_sqrd
 
 
-opt_param = np.loadtxt("../Problem2/opt_params.txt")
-opt_param = np.multiply(opt_param, 1 + 0.0520*np.random.rand(len(opt_param)) )
-opt_param_curvM = np.loadtxt("../Problem2/opt_params_curvM.txt", delimiter=" ")
+def mcmc_optimize(f, y_true, N_inv, m_init, covariance, step_size=1, steps=100):
+    """
+    Computes multiple mcmc steps and returns the chain; a list of [chi², m].
+    
+    :param f: The model function
+    :param y_true: The actual data (Power spectra in our case)
+    :param N_inv: The inverse of the error array of true data. (diag(err**-2))
+    :param m_init: The initial model parameters.
+    :param covariance: The covariance between the parameters,
+                       to estimate a better step size.
+    :param step_size: The mcmc step size.
+    :param steps: The number of mcmc steps to compute.
+
+    :return: None
+    """
+
+    # Start to setup the initial conditions
+    y_init, init_chi_sqrd = calc_chi_sqrd(f, m_init, y_true, N_inv)
+
+    print("The initial parameters are:", m_init)
+    print("The initial chi² is:", init_chi_sqrd)
+
+    # Setup the chain
+    chain = np.zeros((steps, len(m_init)+1))
+    
+    # Setup the initial conditions.
+    m = m_init
+    chi_sqrd = init_chi_sqrd
+    for t in range(0, steps):
+        print("%d --------------------" %t)
+        m, new_chi_sqrd = mcmc_step(f, y_true, N_inv, m, chi_sqrd, step_size, covariance)
+
+        # If you are moving, try moving faster/further.
+        if new_chi_sqrd != chi_sqrd:
+            step_size *= 3.0/0.8
+
+        # If you are not moving, make the steps smaller.
+        if new_chi_sqrd == chi_sqrd:
+            step_size *= 0.8
+
+        # At convergence, the above will stabilize - or you can make 0.7 -> 0.7**(1-i/steps) force step convergence
+
+        # Then save the results
+        chi_sqrd = new_chi_sqrd
+
+        chain[t][0] = chi_sqrd
+        chain[t][1:] = m
+
+        print(m)
+        print(" INITIAL CHI² %.4lf // CURRENT CHI² %.4lf" %(init_chi_sqrd, chi_sqrd))
+        print("%d -------------------- Step_size: %lf" %(t, step_size))
+        print(" ")
+
+    return chain
+
 
 data = np.loadtxt("COM_PowerSpect_CMB-TT-full_R3.01.txt", skiprows=1)
-N_inv = np.diag((0.5*(data[:, 2] + data[:, 3]))**(-2))
-
-
-y = get_power_func(opt_param)
-
-res = data[:, 1] - y[0: len(data)]
-
-print(np.sum(np.square(res/(0.5*(data[:, 2] + data[:, 3])))))
-
-opt_param_chi = res.T@N_inv@res
-
-print("Initial Chi", opt_param_chi)
-
-m, chi_sqrd = opt_param, opt_param_chi
-
-chain_length = 500
-
-m_list = np.zeros((chain_length, len(m)+1))
-
-step_size = 1000
-"""    
-for t in range(0, chain_length):
-    print(t)
-
-    m, chi_sqrd_new = mcmc_step(get_power_func, data[:, 1],
-                            N_inv, m, chi_sqrd,
-                       step_size, opt_param_curvM)
-
-
-    if chi_sqrd_new != chi_sqrd:
-        step_size *= 1.0/0.7
-        
-    if chi_sqrd_new == chi_sqrd:
-        step_size *= 0.7
-
-    chi_sqrd = chi_sqrd_new
-        
-    m_list[t][0] = chi_sqrd
-    m_list[t][1:] = m
-    print(m)
-    print(opt_param_chi, chi_sqrd)
-
-    print("--------------------",step_size)
-
-np.savetxt("chain.txt", m_list)
-
-for s in range(0, chain_length):
-    plt.plot(m_list.T[s])
-    plt.show()
 """
-chain = np.loadtxt("chain.txt")
+data_err = 0.5*(data[:, 2] + data[:, 3])
+N_inv = np.diag(data_err**(-2))
 
-for i in range(0, len(m)+1):
-    plt.plot(chain[200:,i])
+m_init = np.loadtxt("../Problem2/planck_fit_params.txt")
+m_init = [69, 0.022, 0.12, 0.06, 2.1e-9, 0.95] #np.multiply(m_init, 1 + 0.020*np.random.rand(len(m_init)) )
+m_covariance = np.loadtxt("../Problem2/planck_fit_covariance.txt", delimiter=" ")
+
+
+chain = mcmc_optimize(get_power_func, data[:, 1], N_inv, m_init, m_covariance, step_size=10, steps=1000)
+              
+np.savetxt("planck_chain2.txt", chain)
+
+"""
+
+data_b = np.loadtxt("COM_PowerSpect_CMB-TT-binned_R3.01.txt", skiprows=1)
+data_c = np.loadtxt("planck_chain2.txt")
+
+plt.scatter(data_b[:, 0], data_b[:, 1], s=2)
+plt.plot(data[:, 0], get_power_func(np.mean(data_c[400:, 1:], axis=0)))
+plt.show()
+
+for i in range(0, 6):
+    
+    plt.loglog(np.abs(np.fft.rfft(data_c[400:, i])))
     plt.show()
 
-    plt.loglog(np.abs(np.fft.rfft(chain[200:,i])))
-    plt.show()
-
-    print(np.mean(chain[200:, i]))
-    print(np.std(chain[200:, i]))
