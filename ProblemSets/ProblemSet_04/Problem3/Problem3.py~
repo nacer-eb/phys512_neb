@@ -1,5 +1,0 @@
-import numpy as np
-import matplotlib.pyplot as plt
-
-opt_param = [6.86717080e+01, 2.24532851e-02, 1.16567909e-01, 5.84045663e-03,
- 1.88736607e-09, 9.73018432e-01]
