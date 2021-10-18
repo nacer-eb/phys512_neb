@@ -190,8 +190,15 @@ np.savetxt("planck_fit_covariance.txt", np.linalg.inv(A_prime_T@N_inv@A_prime_T.
 
 # Plotting Data
 best_fit_params = np.loadtxt("planck_fit_params.txt")
+best_fit_param_cov = np.loadtxt("planck_fit_covariance.txt")
+
+print("----------")
+print("The standard deviations are:", np.sqrt(np.diag(best_fit_param_cov)))
+print("----------")
+
 p1_params = [69, 0.022, 0.12, 0.06, 2.1e-9, 0.95]
 data_b = np.loadtxt("COM_PowerSpect_CMB-TT-binned_R3.01.txt", skiprows=1)
+
 
 fig, ax = plt.subplots(1, 1, figsize=(16, 9))
 plt.hist(np.abs((get_power_func(best_fit_params)-data[0:, 1])/data_err), bins=15, density=True, alpha=0.5, label="The best fit")
@@ -204,3 +211,4 @@ plt.savefig("Error_histogram")
 plt.clf()
 plt.cla()
 plt.close()
+
