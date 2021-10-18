@@ -197,7 +197,7 @@ m_covariance = np.loadtxt("../Problem2/planck_fit_covariance.txt", delimiter=" "
 
 # Collect and save the chain
 chain = mcmc_optimize(get_power_func, data[:, 1], N_inv, m_init, m_covariance, step_size=3, steps=2000)
-np.savetxt("planck_chain1.txt", chain)
+np.savetxt("planck_chain.txt", chain)
 
 # Getting and plotting the chain data
 data_c = np.loadtxt("planck_chain.txt")
