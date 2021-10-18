@@ -164,13 +164,13 @@ def mcmc_optimize(f, y_true, N_inv, m_init, covariance, step_size=1, steps=100):
 
         # If you are moving, try moving faster/further.
         if new_chi_sqrd != chi_sqrd:
-            step_size *= 3.0/0.8
+            step_size = np.min((step_size*3.0/0.8, 10)) 
 
         # If you are not moving, make the steps smaller.
         if new_chi_sqrd == chi_sqrd:
             step_size *= 0.8
 
-        # At convergence, the above will stabilize - or you can make 0.7 -> 0.7**(1-i/steps) force step convergence
+        # At convergence, the above will stabilize - or you add a **(1-i/steps) power to force step convergence
 
         # Then save the results
         chi_sqrd = new_chi_sqrd
@@ -186,31 +186,45 @@ def mcmc_optimize(f, y_true, N_inv, m_init, covariance, step_size=1, steps=100):
     return chain
 
 
+# Obtain the planck data and error
 data = np.loadtxt("COM_PowerSpect_CMB-TT-full_R3.01.txt", skiprows=1)
-"""
 data_err = 0.5*(data[:, 2] + data[:, 3])
 N_inv = np.diag(data_err**(-2))
 
-m_init = np.loadtxt("../Problem2/planck_fit_params.txt")
-m_init = [69, 0.022, 0.12, 0.06, 2.1e-9, 0.95] #np.multiply(m_init, 1 + 0.020*np.random.rand(len(m_init)) )
+# Obtain the initial parameters (I chose the ones from problem 1)
+m_init = [69, 0.022, 0.12, 0.06, 2.1e-9, 0.95]
 m_covariance = np.loadtxt("../Problem2/planck_fit_covariance.txt", delimiter=" ")
 
+# Collect and save the chain
+chain = mcmc_optimize(get_power_func, data[:, 1], N_inv, m_init, m_covariance, step_size=3, steps=2000)
+np.savetxt("planck_chain1.txt", chain)
 
-chain = mcmc_optimize(get_power_func, data[:, 1], N_inv, m_init, m_covariance, step_size=10, steps=1000)
-              
-np.savetxt("planck_chain2.txt", chain)
+# Getting and plotting the chain data
+data_c = np.loadtxt("planck_chain.txt")
 
-"""
+data_c_mean = np.mean(data_c[400:, 1:], axis=0)
+data_c_std = np.std(data_c[400:, 1:], axis=0)
+data_c_cov = np.cov(data_c[400:, 1:], rowvar=False)
 
-data_b = np.loadtxt("COM_PowerSpect_CMB-TT-binned_R3.01.txt", skiprows=1)
-data_c = np.loadtxt("planck_chain2.txt")
+print("The parameters are", data_c_mean, "//", np.shape(data_c_mean))
+print(" ")
+print("The standard deviations are", data_c_std)
+print(" ")
+print("The covariance matrix is", data_c_cov, "//", np.shape(data_c_cov))
 
-plt.scatter(data_b[:, 0], data_b[:, 1], s=2)
-plt.plot(data[:, 0], get_power_func(np.mean(data_c[400:, 1:], axis=0)))
-plt.show()
+fig, ax = plt.subplots(3, 2, figsize=(16, 9))
 
-for i in range(0, 6):
+index = 1
+for i in range(0, 3):
+    for j in range(0, 2):
+        ft = np.abs(np.fft.rfft(data_c[100:, index]))
+        ax[i][j].loglog(np.full(len(ft), np.mean(ft[1: 50])), color="red")
+        ax[i][j].loglog(ft)
+        index += 1
+plt.savefig("FourierTransform")
+plt.cla()
+plt.clf()
+plt.close()
+
+
     
-    plt.loglog(np.abs(np.fft.rfft(data_c[400:, i])))
-    plt.show()
-
