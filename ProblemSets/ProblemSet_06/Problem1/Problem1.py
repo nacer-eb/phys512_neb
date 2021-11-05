@@ -5,6 +5,8 @@ import json
 import scipy.ndimage
 import scipy.signal
 
+DATA_LENGTH = 4096*32
+
 import matplotlib
 # Changing font size
 matplotlib.rcParams.update({'font.size': 22})
@@ -70,18 +72,16 @@ def getWindowedFFTTemplates(e):
     bbh_event_templates = getTemplates(e)
     
     template_window = flat_window(len(bbh_event_templates[0]), 0.95)
-    
     template_window /= calcRms(template_window) # Renormalize the template
     bbh_event_templates_windowed = bbh_event_templates*template_window
 
     bbh_event_templates_windowed_fft = np.fft.rfft(bbh_event_templates_windowed)
-
     return bbh_event_templates_windowed_fft
 
 
 def getWindowedFFTData(e):
     bbh_event_data_lh = getStrains(e)
-    print(np.shape(bbh_event_data_lh))
+    
     data_window = flat_window(len(bbh_event_data_lh[0]), 0.95)
     data_window /= calcRms(data_window) # Renormalize the template
     bbh_event_data_lh_windowed = bbh_event_data_lh*data_window
@@ -127,42 +127,44 @@ def searchEvent(e, noise_model_smooth_fft):
 ### example plots 
 
 # Plotting the window as an example
-window_res = 4096*32
-window_sample = flat_window(window_res, 0.95)
-
-window_sample_x = np.linspace(0, 1, window_res)
-
-fig, ax = plt.subplots(1, figsize=(16, 9))
-plt.plot(window_sample_x, window_sample)
-plt.title("Window function")
-plt.tight_layout()
-plt.savefig("window_sample_full")
-plt.cla()
-plt.clf()
-plt.close()
-
-
-zoomed_window_sample = window_sample[int(window_res*0.0248): int(window_res*0.0251)]
-zoomed_window_sample_x = window_sample_x[int(window_res*0.0248): int(window_res*0.0251)]
-fig, ax = plt.subplots(1, figsize=(16, 9))
-plt.plot(zoomed_window_sample_x, zoomed_window_sample)
-plt.title("Window function - Zoomed in")
-plt.tight_layout()
-plt.savefig("window_sample_zoom")
-plt.cla()
-plt.clf()
-plt.close()
-
-
-# Plotting the PSD to show the flattening process
-# Loop over events
-for e in range(4):
-    fig, ax = plt.subplots(1, figsize=(16, 9))
+def window_demo():
+    window_res = 4096*32
+    window_sample = flat_window(window_res, 0.95)
     
+    window_sample_x = np.linspace(0, 1, window_res)
+
+    fig, ax = plt.subplots(1, figsize=(16, 9))
+    plt.plot(window_sample_x, window_sample)
+    plt.title("Window function")
+    plt.tight_layout()
+    plt.savefig("window_sample_full")
+    plt.cla()
+    plt.clf()
+    plt.close()
+
+
+    zoomed_window_sample = window_sample[int(window_res*0.0248): int(window_res*0.0251)]
+    zoomed_window_sample_x = window_sample_x[int(window_res*0.0248): int(window_res*0.0251)]
+    fig, ax = plt.subplots(1, figsize=(16, 9))
+    plt.plot(zoomed_window_sample_x, zoomed_window_sample)
+    plt.title("Window function - Zoomed in")
+    plt.tight_layout()
+    plt.savefig("window_sample_zoom")
+    plt.cla()
+    plt.clf()
+    plt.close()
+
+
+def PSD_smoothing_demo():
+    # Plotting the PSD to show the flattening process
+    # Loop over events
+    for e in range(4):
+        fig, ax = plt.subplots(1, figsize=(16, 9))
+        
     #Detectors
     for d in range(2):
         plt.loglog(np.abs(getWindowedFFTData(e)[d])**2, label=bbh_detectors_names[d])
-
+        
     plt.title("Initial PSD of event " + bbh_events_names[e])
     plt.legend()
     plt.tight_layout()
@@ -171,59 +173,193 @@ for e in range(4):
     plt.clf()
     plt.close()
 
+    # Plotting average PSD
+    average_PSD = np.abs(getWindowedFFTData(0))**2
+    for e in range(3):
+        average_PSD += np.abs(getWindowedFFTData(e))**2
+        
+        average_PSD /= 4
+        
+        fig, ax = plt.subplots(1, figsize=(16, 9))
 
-# Plotting average PSD
-average_PSD = np.abs(getWindowedFFTData(0))**2
-for e in range(3):
-    average_PSD += np.abs(getWindowedFFTData(e))**2
-
-average_PSD /= 4
-    
-fig, ax = plt.subplots(1, figsize=(16, 9))
-    
-#Detectors
-for d in range(2):
-    plt.loglog(average_PSD[d], label=bbh_detectors_names[d])
-
-plt.title("Average PSD of all events")
-plt.legend()
-plt.tight_layout()
-plt.savefig("Average_PSD")
-plt.cla()
-plt.clf()
-plt.close()
+    #Detectors
+    for d in range(2):
+        plt.loglog(average_PSD[d], label=bbh_detectors_names[d])
+        
+    plt.title("Average PSD of all events")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("Average_PSD")
+    plt.cla()
+    plt.clf()
+    plt.close()
 
 
-# Plotting final noise model
-noise_model_smooth_fft = getNoiseModel()
-fig, ax = plt.subplots(1, figsize=(16, 9))
+    # Plotting final noise model
+    noise_model_smooth_fft = getNoiseModel()
+    fig, ax = plt.subplots(1, figsize=(16, 9))
    
-#Detectors
-for d in range(2):
-    plt.loglog(noise_model_smooth_fft[d], label=bbh_detectors_names[d])
+    #Detectors
+    for d in range(2):
+        plt.loglog(noise_model_smooth_fft[d], label=bbh_detectors_names[d])
 
-plt.title("Final noise model (squared)")
+        plt.title("Final noise model (squared)")
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig("final_noise_model_squared")
+        plt.cla()
+        plt.clf()
+        plt.close()
+
+        
+        
+#######################
+
+noise_model_smooth_fft = getNoiseModel()
+
+m = np.zeros((4, 2, DATA_LENGTH))
+bbh_event_templates_windowed_white = np.zeros((4, 2, DATA_LENGTH))
+bbh_event_data_lh_windowed_white = np.zeros((4, 2, DATA_LENGTH))
+
+for e in range(0, 4):
+    m[e], bbh_event_templates_windowed_white[e], bbh_event_data_lh_windowed_white[e] = searchEvent(e, noise_model_smooth_fft)
+    
+    fig, ax = plt.subplots(1, figsize=(16, 9))
+    for d in range(0, 2):
+        plt.plot(m[e][d], ".-", linewidth=1, markersize=1, label=bbh_detectors_names[d], alpha=0.5)
+    
+    plt.title("Matched Filter - Event Amplitude - Event " + bbh_events_names[e])
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("mf_event_amplitude_e"+str(e))
+    plt.cla()
+    plt.clf()
+    plt.close()
+
+
+#######################
+    
+events_amplitudes = np.zeros((4, 2))
+events_std = np.zeros((4, 2))
+events_times = np.zeros((4, 2))
+
+for e in range(0, 4):
+    for d in range(0, 2):
+        events_amplitudes[e][d] = max(np.min(m[e][d]), np.max(m[e][d]), key=abs)
+        events_std[e][d] = np.std(m[e][d])
+        events_times[e][d] = np.argwhere(m[e][d] == events_amplitudes[e][d])
+
+
+e_range = np.arange(0, 4, 1)
+print(e_range)
+fig, ax = plt.subplots(1, figsize=(16, 9))
+plt.errorbar(e_range-0.1, np.abs(events_amplitudes[:,0]), events_std[e][0], fmt=".", label=bbh_detectors_names[0])
+plt.errorbar(e_range+0.1, np.abs(events_amplitudes[:,1]), events_std[e][1], fmt=".", label=bbh_detectors_names[1])
+
+labels = [item.get_text() for item in ax.get_xticklabels()]
+for e in range(0, 4):
+    labels[2*e+1] = bbh_events_names[e]
+
+ax.set_xticklabels(labels)
+plt.title("GW Events signals")
+plt.xlabel("GW Event")
+plt.ylabel("Normalized Signal amplitude")
 plt.legend()
 plt.tight_layout()
-plt.savefig("final_noise_model_squared")
+plt.savefig("Sig_Amplitude")
+plt.cla()
+plt.clf()
+plt.close()
+
+print(events_amplitudes)
+print(events_std)
+print(events_times)
+
+#######################
+
+e_range = np.arange(0, 4, 1)
+print(e_range)
+fig, ax = plt.subplots(1, figsize=(16, 9))
+plt.scatter(e_range-0.1, np.abs(events_amplitudes[:,0]/events_std[:,0]), label=bbh_detectors_names[0])
+plt.scatter(e_range+0.1, np.abs(events_amplitudes[:,1]/events_std[:,1]), label=bbh_detectors_names[1])
+
+labels = [item.get_text() for item in ax.get_xticklabels()]
+for e in range(0, 4):
+    labels[2*e+1] = bbh_events_names[e]
+
+ax.set_xticklabels(labels)
+plt.title("GW Events SNR")
+plt.xlabel("GW Event")
+plt.ylabel("SNR")
+plt.legend()
+plt.tight_layout()
+plt.savefig("GW_SNR")
+plt.cla()
+plt.clf()
+plt.close()
+
+#######################
+
+events_amplitudes_weighted = np.zeros(4)
+events_std_weighted = np.zeros(4)
+norm_fac = np.zeros(4)
+for d in range(0, 2):
+    events_amplitudes_weighted += np.abs(events_amplitudes.T[d])/np.abs(events_std.T[d])**2
+    norm_fac += 1/np.abs(events_std.T[d])**2
+
+events_amplitudes_weighted /= norm_fac
+events_std_weighted = np.sqrt(1.0/norm_fac)
+events_SNR_weighted = events_amplitudes_weighted/events_std_weighted
+
+e_range = np.arange(0, 4, 1)
+fig, ax = plt.subplots(1, figsize=(16, 9))
+
+plt.scatter(e_range, events_SNR_weighted)
+
+labels = [item.get_text() for item in ax.get_xticklabels()]
+for e in range(0, 4):
+    labels[2*e+1] = bbh_events_names[e]
+
+ax.set_xticklabels(labels)
+plt.title("GW Events SNR")
+plt.xlabel("GW Event")
+plt.ylabel("SNR")
+plt.tight_layout()
+plt.savefig("GW_SNR_weighted")
 plt.cla()
 plt.clf()
 plt.close()
 
 
-###
+#######################
+
+
+for e in range(0, 4):
+    bbh_event_templates = getTemplates(e)
+    for d in range(0, 2):
+
+        plt.plot(bbh_event_templates[d]/np.max(bbh_event_templates[d]), "-.", markersize=1, label=bbh_detectors_names[d])
+
+        plt.plot(bbh_event_templates_windowed_white[e, d, :]/np.max(bbh_event_templates_windowed_white[e, d, :]), "-.", markersize=1, label=bbh_detectors_names[d])
+
+        plt.legend()
+        plt.show()
+
+
+#######################
+
+
+for e in range(4): 
+    bbh_data_fft_full = getWindowedFFTData(e)
+    for d in range(2):
+        bbh_data_fft = bbh_data_fft_full[d]
+        theoret_snr = np.mean((np.abs(bbh_data_fft)/np.abs(np.sqrt(noise_model_smooth_fft[d])-np.abs(bbh_data_fft)))[1000:])
+
+        print(theoret_snr)
+
 exit(1)
+#######################
 
-noise_model_smooth_fft = getNoiseModel()
-
-m, bbh_event_templates_windowed_white, bbh_event_data_lh_windowed_white = searchEvent(0, noise_model_smooth_fft)
-
-plt.plot(m[0], ".", markersize=1)
-plt.show()
-
-event_amplitude = max(np.min(m[0]), np.max(m[0]), key=abs)
-event_time = np.argwhere(m[0] == event_amplitude)[0]
-print(event_time)
 
 plt.plot(bbh_event_data_lh_windowed_white[0])
 plt.plot(event_amplitude*np.roll(bbh_event_templates_windowed_white[0], event_time), color="red")
