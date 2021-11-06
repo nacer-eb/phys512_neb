@@ -4,15 +4,22 @@ import h5py
 import json
 import scipy.ndimage
 import scipy.signal
+import matplotlib
+import warnings
 
+# Ignores matplotlib warnings
+warnings.filterwarnings("ignore")
+
+# Number of data points we are supplied per strain
 DATA_LENGTH = 4096*32
 
-import matplotlib
 # Changing font size
 matplotlib.rcParams.update({'font.size': 22})
 
+# IMPORTANT: DIRECTORY TO THE LIGO DATA
 dir = "../../../../LOSC_Event_tutorial/LOSC_Event_tutorial/"
 
+# The names of the events and detectors.
 bbh_events_names = ["GW150914", "LVT151012", "GW151226", "GW170104"]
 bbh_detectors_names = ["Livingston", "Hanford"]
 
@@ -112,6 +119,9 @@ def searchEvent(e, noise_model_smooth_fft):
     bbh_event_data_lh_windowed_fft = getWindowedFFTData(e)
 
     bbh_event_templates_windowed_white_fft = bbh_event_templates_windowed_fft/np.sqrt(noise_model_smooth_fft)
+
+    bbh_event_templates_windowed_white_fft_freq = np.fft.rfftfreq(DATA_LENGTH)
+    
     bbh_event_data_lh_windowed_white_fft = bbh_event_data_lh_windowed_fft/np.sqrt(noise_model_smooth_fft)
     
     f = np.fft.irfft(bbh_event_data_lh_windowed_white_fft*np.conj(bbh_event_templates_windowed_white_fft))
@@ -213,7 +223,7 @@ def PSD_smoothing_demo():
 
         
         
-#######################
+####################### GET THE NOISE MODEL AND SEARCH EVENTS
 
 noise_model_smooth_fft = getNoiseModel()
 
@@ -221,13 +231,15 @@ m = np.zeros((4, 2, DATA_LENGTH))
 bbh_event_templates_windowed_white = np.zeros((4, 2, DATA_LENGTH))
 bbh_event_data_lh_windowed_white = np.zeros((4, 2, DATA_LENGTH))
 
+
+
 for e in range(0, 4):
     m[e], bbh_event_templates_windowed_white[e], bbh_event_data_lh_windowed_white[e] = searchEvent(e, noise_model_smooth_fft)
     
     fig, ax = plt.subplots(1, figsize=(16, 9))
     for d in range(0, 2):
         plt.plot(m[e][d], ".-", linewidth=1, markersize=1, label=bbh_detectors_names[d], alpha=0.5)
-    
+        
     plt.title("Matched Filter - Event Amplitude - Event " + bbh_events_names[e])
     plt.legend()
     plt.tight_layout()
@@ -237,7 +249,7 @@ for e in range(0, 4):
     plt.close()
 
 
-#######################
+####################### OBTAIN THE EVENT AMPLITUDES - STD - TIMES AND SNR
     
 events_amplitudes = np.zeros((4, 2))
 events_std = np.zeros((4, 2))
@@ -251,7 +263,7 @@ for e in range(0, 4):
 
 
 e_range = np.arange(0, 4, 1)
-print(e_range)
+
 fig, ax = plt.subplots(1, figsize=(16, 9))
 plt.errorbar(e_range-0.1, np.abs(events_amplitudes[:,0]), events_std[e][0], fmt=".", label=bbh_detectors_names[0])
 plt.errorbar(e_range+0.1, np.abs(events_amplitudes[:,1]), events_std[e][1], fmt=".", label=bbh_detectors_names[1])
@@ -271,11 +283,23 @@ plt.cla()
 plt.clf()
 plt.close()
 
+print("Events amplitudes (m)")
 print(events_amplitudes)
+print("-------------")
+print("Events std (sigma_m scatter)")
 print(events_std)
-print(events_times)
+print("-------------")
 
-#######################
+print("Events SNR")
+print(np.divide(events_amplitudes, events_std))
+print("-------------")
+
+print("Events Time")
+print(events_times)
+print("-------------")
+
+
+####################### PLOT THE SNR
 
 e_range = np.arange(0, 4, 1)
 print(e_range)
@@ -298,7 +322,7 @@ plt.cla()
 plt.clf()
 plt.close()
 
-#######################
+####################### OBTAIN AND PLOT THE COMBINED SNRs
 
 events_amplitudes_weighted = np.zeros(4)
 events_std_weighted = np.zeros(4)
@@ -331,41 +355,50 @@ plt.clf()
 plt.close()
 
 
-#######################
+####################### OBTAIN THE THEORETICAL SNR
 
 
-for e in range(0, 4):
-    bbh_event_templates = getTemplates(e)
-    for d in range(0, 2):
+theoretical_sigma_m = np.zeros((4, 2))
 
-        plt.plot(bbh_event_templates[d]/np.max(bbh_event_templates[d]), "-.", markersize=1, label=bbh_detectors_names[d])
-
-        plt.plot(bbh_event_templates_windowed_white[e, d, :]/np.max(bbh_event_templates_windowed_white[e, d, :]), "-.", markersize=1, label=bbh_detectors_names[d])
-
-        plt.legend()
-        plt.show()
-
-
-#######################
-
-
-for e in range(4): 
-    bbh_data_fft_full = getWindowedFFTData(e)
+for e in range(4):
     for d in range(2):
-        bbh_data_fft = bbh_data_fft_full[d]
-        theoret_snr = np.mean((np.abs(bbh_data_fft)/np.abs(np.sqrt(noise_model_smooth_fft[d])-np.abs(bbh_data_fft)))[1000:])
+        theoretical_sigma_m[e][d] = np.sqrt((1.0/np.dot(bbh_event_templates_windowed_white[e][d], bbh_event_templates_windowed_white[e][d].T))/DATA_LENGTH)
 
-        print(theoret_snr)
+print("Events std (sigma_m theoretical)")
+print(theoretical_sigma_m)
+print("-------------")
+
+print("Theoretical SNR")
+print(np.divide(events_amplitudes, theoretical_sigma_m))
+print("-------------")
+
+
+#######################
+
+print("Amplitude, Frequency")
+for e in range(4):
+    print(bbh_events_names[e])
+    for d in range(2):
+        bbh_event_templates_windowed_white_fft = np.fft.rfft(bbh_event_templates_windowed_white[e][d], n=DATA_LENGTH*2)
+        bbh_event_templates_windowed_white_fft_freq = np.fft.rfftfreq(DATA_LENGTH*2)*4096
+
+        print(bbh_event_templates_windowed_white_fft_freq[np.argmax(bbh_event_templates_windowed_white_fft)])        
+
+        
+#######################
+
+time = np.arange(0, DATA_LENGTH, 1)
+
+for e in range(4):
+    print(bbh_events_names[e])
+    for d in range(2):
+        m_data_tmp = sorted(zip(np.abs(m[e][d]), time), reverse=True)[:10]
+        m_amplitudes, m_positions = np.transpose(m_data_tmp)
+        
+        print(m_amplitudes/theoretical_sigma_m[e][d])
+        print(m_positions)
+        print(" ")
+
 
 exit(1)
 #######################
-
-
-plt.plot(bbh_event_data_lh_windowed_white[0])
-plt.plot(event_amplitude*np.roll(bbh_event_templates_windowed_white[0], event_time), color="red")
-plt.show()
-
-m_std = np.std(m[0][80000:])
-
-print(m_std)
-print(event_amplitude/m_std)
