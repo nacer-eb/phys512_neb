@@ -1,21 +1,15 @@
-#python routine to help show how broken the C 
-#standard library random number generator is.
-#generate a bunch of random triples.  If plotted
-#correctly, it becomes obvious they aren't 
-#anywhere close to random.
-
 import numpy as np
 import ctypes
 import numba as nb
-import time
-from matplotlib import pyplot as plt
 
+# Setup the lib to use and the rand function
 mylib=ctypes.cdll.LoadLibrary("libc.so.6")
 rand=mylib.rand
 rand.argtypes=[]
 rand.restype=ctypes.c_int
 
 
+# Generate a large number of random numbers using the above defined func.
 @nb.njit
 def get_rands_nb(vals):
     n=len(vals)
@@ -28,19 +22,17 @@ def get_rands(n):
     get_rands_nb(vec)
     return vec
 
-
-n=
+# Get a list of rands
+n = 300000000
 vec=get_rands(n*3)
-#vv=vec&(2**16-1)
 
+# Reshape the list into rows of (N, 3)
 vv=np.reshape(vec,[n,3])
-vmax=np.max(vv,axis=1)
 
+# Keep only entire rows which are under a threshold
 maxval=1e8
-vv2=vv[vmax<maxval,:]
+vv2=vv[np.max(vv,axis=1)<maxval,:]
 
-f=open('rand_points3.txt','w')
-for i in range(vv2.shape[0]):
-    myline=repr(vv2[i,0])+' '+repr(vv2[i,1])+' '+ repr(vv2[i,2])+'\n'
-    f.write(myline)
-f.close()
+#Save the data
+np.savetxt("rand_points4.txt", vv2, delimiter=" ", fmt='%d')
+

@@ -18,8 +18,8 @@ def gen_numpy_rand():
     
 #gen_numpy_rand() # Only call once to generate numpy rand data
 
-data_title = ["supplied data", "libc.so.6", "numpy randint"]
-for i in range(1, 4):
+data_title = ["supplied data", "libc.so.6", "numpy randint", "test"]
+for i in range(1, 5):
     # Loading the random data points
     data_pnts = np.loadtxt("rand_points"+str(i)+".txt", delimiter=" ")
     print(np.shape(data_pnts))
@@ -33,11 +33,12 @@ for i in range(1, 4):
     plt.title("Planes in the PRNG, data source: "+data_title[i-1])
     plt.xlabel("x-0.5y")
     plt.ylabel("z")
-    plt.savefig("PlanesInPRNG"+str(i))
+    plt.show()
+    #plt.savefig("PlanesInPRNG"+str(i))
     plt.cla()
     plt.clf()
     plt.close()
     
-#My libc.so.6 - indistinguishable from numpy's rand
+# My libc.so.6 (Ubuntu) is indistinguishable from numpy's rand
 
 
