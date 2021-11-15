@@ -1,30 +1,43 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import numba as nb
 
-data_pnts = np.loadtxt("rand_points.txt", delimiter=" ")[0:100000]
+# Gathering data using the numpy method - using the 'same' procedure as for libc.so.6
+@nb.njit
+def gen_primary_rand():
+    n = 300000000
+    data = np.random.randint(0, 2**31-1, (n, 3))
+    return data
 
-print(np.shape(data_pnts))
+def gen_numpy_rand():
+    data = gen_primary_rand()
+    data = data[np.max(data, axis=1) < 1e8]
+    print(data)    
+    np.savetxt("rand_points3.txt", data, delimiter=" ", fmt='%d')
 
-"""
-fig = plt.figure(figsize=(16, 9))
-ax = fig.add_subplot(1, 1, 1, projection='3d')
-ax.scatter(data_pnts.T[0], data_pnts.T[1], data_pnts.T[2], s=1)
-plt.show()
-"""
+    
+#gen_numpy_rand() # Only call once to generate numpy rand data
+
+data_title = ["supplied data", "libc.so.6", "numpy randint"]
+for i in range(1, 4):
+    # Loading the random data points
+    data_pnts = np.loadtxt("rand_points"+str(i)+".txt", delimiter=" ")
+    print(np.shape(data_pnts))
+    
+    # The parameters for our 2d view
+    a=1
+    b=-0.5
+
+    # Plotting a 2d view of our random numbers
+    plt.scatter(a*data_pnts.T[0] + b*data_pnts.T[1], data_pnts.T[2], s=0.51)
+    plt.title("Planes in the PRNG, data source: "+data_title[i-1])
+    plt.xlabel("x-0.5y")
+    plt.ylabel("z")
+    plt.savefig("PlanesInPRNG"+str(i))
+    plt.cla()
+    plt.clf()
+    plt.close()
+    
+#My libc.so.6 - indistinguishable from numpy's rand
 
 
-a=1
-b=-0.5
-
-plt.scatter(a*data_pnts.T[0] + b*data_pnts.T[1], data_pnts.T[2], s=1)
-plt.title("Planes in the PRNG")
-plt.xlabel("x-0.5y")
-plt.ylabel("z")
-plt.show()
-#plt.savefig("PlanesInPRNG")
-plt.cla()
-plt.clf()
-plt.close()
-
-# Clean this up
-# Could not reproduce this with my libc

@@ -29,7 +29,7 @@ def get_rands(n):
     return vec
 
 
-n=300000000
+n=
 vec=get_rands(n*3)
 #vv=vec&(2**16-1)
 
@@ -39,7 +39,7 @@ vmax=np.max(vv,axis=1)
 maxval=1e8
 vv2=vv[vmax<maxval,:]
 
-f=open('rand_points2.txt','w')
+f=open('rand_points3.txt','w')
 for i in range(vv2.shape[0]):
     myline=repr(vv2[i,0])+' '+repr(vv2[i,1])+' '+ repr(vv2[i,2])+'\n'
     f.write(myline)
