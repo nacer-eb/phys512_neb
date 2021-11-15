@@ -1,63 +1,63 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-n=10000000
-
-large_sample = np.random.random(n)*10-5
-
+# Generating Probability Density Functions
+# The lorentzian PDF
 def normed_cauchy_PDF(x, gamma):
-    return (1.0/(gamma*np.pi))*(gamma**2/(x**2 + gamma**2))
+    return (1.0/(gamma*np.pi))*(1.0/((x/gamma)**2 + 1))
 
 
+# The exponential PDF
+def exponential_dist_PDF(x, alpha):
+    return alpha*np.exp(-alpha*x)
+
+
+# The Lorentzian inverseCDF
 def inv_cauchy_CDF(q, gamma):
     return gamma*np.tan(np.pi*(q-0.5))
 
 
-def generate_cauchy(gamma):
+# Generate the Cauchy distribution
+def generate_cauchy(gamma, n):
     unif_rands = np.random.rand(n)
     return inv_cauchy_CDF(unif_rands, gamma)
 
 
-def exponential_dist_PDF(x, alpha):
-    return np.exp(-alpha*x)
+# The parameters of the distributions
+GAMMA = 0.808
+ALPHA = 1.0
 
+# Generate the cauchy dist. (using inverse CDF) and filter out the negative side
+cauchy_gen = generate_cauchy(GAMMA, 10000000)
+cauchy_gen_final = cauchy_gen[cauchy_gen > 0]
 
+# Get the acceptance rate and filter out part of the cauchy dist. points
+acceptance_rate = normed_cauchy_PDF(0, GAMMA)/exponential_dist_PDF(0, ALPHA) * exponential_dist_PDF(cauchy_gen_final, ALPHA) / normed_cauchy_PDF(cauchy_gen_final, GAMMA)
+acceptance_mask = np.random.rand(len(cauchy_gen_final)) < acceptance_rate
 
+# Use the above to then get the exponential dist.
+exponential_dist = cauchy_gen_final[acceptance_mask]
 
+# Verbose info
+print("The proportion of points accepted", np.mean(acceptance_mask))
+print("Number of points generated", len(exponential_dist))
 
-cauchy_gen = generate_cauchy(1.0)
-cauchy_gen_filtered = cauchy_gen[np.abs(cauchy_gen) < 1000]
+# Plot to show the initial distribution is always above the target distribution
+x = np.linspace(0, 20, 1000)
+plt.plot(x, normed_cauchy_PDF(x, GAMMA)/normed_cauchy_PDF(0, GAMMA) - exponential_dist_PDF(x, ALPHA)/exponential_dist_PDF(0, ALPHA), color="orange")
+plt.ylabel("Initial Distribution - Target Distribution")
+plt.savefig("InitialVTargetDist_diff")
+plt.cla()
+plt.clf()
+plt.close()
 
-cauchy_gen_final = cauchy_gen_filtered[cauchy_gen_filtered > 0]
-
-acceptance_rate = (1.0/np.pi)*exponential_dist_PDF(cauchy_gen_final, 1)/normed_cauchy_PDF(cauchy_gen_final, 1)
-acceptance_toss = np.random.rand(len(cauchy_gen_final)) < acceptance_rate
-
-exponential_dist = cauchy_gen_final[acceptance_toss]
-
-print(np.mean(acceptance_toss))
-
-"""
-
-x = np.linspace(-50, 50, 10000)
-plt.plot(x, normed_cauchy_PDF(x, 1))
-plt.hist(cauchy_gen_filtered, bins=5000, density=True)
-plt.xlim(-5, 5)
-plt.show()
-"""
-
-x = np.linspace(0, 100, 10000)
-plt.plot(x, np.pi*normed_cauchy_PDF(x, 1))
-plt.plot(x, exponential_dist_PDF(x, 1), color="orange")
-plt.show()
-
-
-
-x = np.linspace(0, 10, 10000)
-plt.plot(x, exponential_dist_PDF(x, 1))
-plt.hist(exponential_dist, bins=1000, density=True)
-plt.xlim(0, 10)
-plt.show()
-
-
+# Plot the histogram of the generated exponential distribution - compared to the analytical dist.
+plt.hist(exponential_dist, bins=1000, density=True, label="Generated Distribution")
+plt.plot(x, exponential_dist_PDF(x, ALPHA), label="Exponential Distribution - Analytical")
+plt.ylabel("Normalized Distribution")
+plt.legend()
+plt.savefig("ExponentialDistGen_Hist")
+plt.cla()
+plt.clf()
+plt.close()
 
